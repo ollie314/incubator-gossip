@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutorService;
@@ -43,6 +44,7 @@ import org.apache.gossip.event.GossipState;
 import org.apache.gossip.manager.impl.OnlyProcessReceivedPassiveGossipThread;
 
 import org.apache.gossip.model.GossipDataMessage;
+import org.apache.gossip.model.SharedGossipDataMessage;
 
 
 public abstract class GossipManager implements NotificationListener {
@@ -67,14 +69,20 @@ public abstract class GossipManager implements NotificationListener {
 
   private ExecutorService gossipThreadExecutor;
   
-  private GossipCore gossipCore;
+  private final GossipCore gossipCore;
+  
+  private final DataReaper dataReaper;
+  
+  private final Clock clock;
 
   public GossipManager(String cluster,
           URI uri, String id, GossipSettings settings,
           List<GossipMember> gossipMembers, GossipListener listener) {
     
     this.settings = settings;
-    this.gossipCore = new GossipCore(this);
+    gossipCore = new GossipCore(this);
+    clock = new SystemClock();
+    dataReaper = new DataReaper(gossipCore, clock);
     me = new LocalGossipMember(cluster, uri, id, System.currentTimeMillis(), this,
             settings.getCleanupInterval());
     members = new ConcurrentSkipListMap<>();
@@ -192,6 +200,7 @@ public abstract class GossipManager implements NotificationListener {
     gossipThreadExecutor.execute(passiveGossipThread);
     activeGossipThread = new ActiveGossipThread(this, this.gossipCore);
     activeGossipThread.init();
+    dataReaper.init();
     GossipService.LOGGER.debug("The GossipService is started.");
   }
 
@@ -202,6 +211,7 @@ public abstract class GossipManager implements NotificationListener {
     gossipServiceRunning.set(false);
     gossipThreadExecutor.shutdown();
     gossipCore.shutdown();
+    dataReaper.close();
     if (passiveGossipThread != null) {
       passiveGossipThread.shutdown();
     }
@@ -218,18 +228,52 @@ public abstract class GossipManager implements NotificationListener {
     }
   }
   
-  public void gossipData(GossipDataMessage message){
+  public void gossipPerNodeData(GossipDataMessage message){
+    Objects.nonNull(message.getKey());
+    Objects.nonNull(message.getTimestamp());
+    Objects.nonNull(message.getPayload());
     message.setNodeId(me.getId());
     gossipCore.addPerNodeData(message);
   }
   
-  public GossipDataMessage findGossipData(String nodeId, String key){
+  public void gossipSharedData(SharedGossipDataMessage message){
+    Objects.nonNull(message.getKey());
+    Objects.nonNull(message.getTimestamp());
+    Objects.nonNull(message.getPayload());
+    message.setNodeId(me.getId());
+    gossipCore.addSharedData(message);
+  }
+  
+  public GossipDataMessage findPerNodeGossipData(String nodeId, String key){
     ConcurrentHashMap<String, GossipDataMessage> j = gossipCore.getPerNodeData().get(nodeId);
     if (j == null){
       return null;
     } else {
-      return j.get(key);
+      GossipDataMessage l = j.get(key);
+      if (l == null){
+        return null;
+      }
+      if (l.getExpireAt() != null && l.getExpireAt() < clock.currentTimeMillis()) {
+        return null;
+      }
+      return l;
     }
+  }
+  
+  public SharedGossipDataMessage findSharedGossipData(String key){
+    SharedGossipDataMessage l = gossipCore.getSharedData().get(key);
+    if (l == null){
+      return null;
+    }
+    if (l.getExpireAt() < clock.currentTimeMillis()){
+      return null;
+    } else {
+      return l;
+    }
+  }
+
+  public DataReaper getDataReaper() {
+    return dataReaper;
   }
             
 }

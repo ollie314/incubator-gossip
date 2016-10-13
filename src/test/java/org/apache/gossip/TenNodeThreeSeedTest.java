@@ -33,7 +33,6 @@ import org.apache.log4j.Logger;
 
 import org.apache.gossip.event.GossipListener;
 import org.apache.gossip.event.GossipState;
-import org.junit.After;
 import org.junit.jupiter.api.Test;
 
 @RunWith(JUnitPlatform.class)
@@ -82,7 +81,7 @@ public class TenNodeThreeSeedTest {
       public Integer call() throws Exception {
         int total = 0;
         for (int i = 0; i < clusterMembers; ++i) {
-          total += clients.get(i).get_gossipManager().getLiveMembers().size();
+          total += clients.get(i).getGossipManager().getLiveMembers().size();
         }
         return total;
       }}).afterWaitingAtMost(20, TimeUnit.SECONDS).isEqualTo(20);

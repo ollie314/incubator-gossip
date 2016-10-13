@@ -15,56 +15,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.gossip.model;
+package org.apache.gossip.udp;
 
-public class GossipMember {
+import org.apache.gossip.model.SharedGossipDataMessage;
 
-  private String cluster;
-  private String uri;
-  private String id;
-  private Long heartbeat;
+public class UdpSharedGossipDataMessage extends SharedGossipDataMessage implements Trackable {
+
+  private String uriFrom;
+  private String uuid;
   
-  public GossipMember(){
-    
-  }
-  
-  public GossipMember(String cluster, String uri, String id, Long heartbeat){
-    this.cluster = cluster;
-    this.uri = uri;
-    this.id = id;
-    this.heartbeat = heartbeat;
-  }
-
-  public String getCluster() {
-    return cluster;
-  }
-
-  public void setCluster(String cluster) {
-    this.cluster = cluster;
-  }
-
-  public String getUri() {
-    return uri;
-  }
-
-  public void setUri(String uri) {
-    this.uri = uri;
-  }
-
-  public String getId() {
-    return id;
-  }
-
-  public void setId(String id) {
-    this.id = id;
-  }
-
-  public Long getHeartbeat() {
-    return heartbeat;
-  }
-
-  public void setHeartbeat(Long heartbeat) {
-    this.heartbeat = heartbeat;
+  public String getUriFrom() {
+    return uriFrom;
   }
   
+  public void setUriFrom(String uriFrom) {
+    this.uriFrom = uriFrom;
+  }
+  
+  public String getUuid() {
+    return uuid;
+  }
+  
+  public void setUuid(String uuid) {
+    this.uuid = uuid;
+  }
+
+  @Override
+  public String toString() {
+    return "UdpSharedGossipDataMessage [uriFrom=" + uriFrom + ", uuid=" + uuid + "]";
+  }
+
 }
